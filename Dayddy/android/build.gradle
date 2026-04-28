@@ -27,4 +27,18 @@ allprojects {
     }
 }
 
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+subprojects {
+    project.configurations.all {
+        resolutionStrategy {
+            eachDependency { details ->
+                if (details.requested.group == 'com.android.support') {
+                    details.useTarget "com.android.support:${details.requested.name}:${details.requested.version}"
+                }
+            }
+        }
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
