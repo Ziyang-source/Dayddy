@@ -6,16 +6,19 @@ import {
     TextInput,
     TouchableOpacity,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { authApi } from '../../services/apiService'; 
 
 const ResetPasswordScreen = ({ navigation, route }) => {
     const { userEmail } = route.params;
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleReset = async () => {
         if (!password || !confirmPassword) {
@@ -33,23 +36,29 @@ const ResetPasswordScreen = ({ navigation, route }) => {
             return;
         }
 
+        setIsLoading(true);
         try {
-            const response = await fetch('http://172.30.224.1:5000/api/reset-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: userEmail, newPassword: password }),
+            const response = await authApi.post('/reset-password', { 
+                email: userEmail, 
+                newPassword: password 
             });
 
             if (response.status === 200) {
                 Alert.alert("Success 🪄", "Password updated! Now try logging in.", [
                     { text: "OK", onPress: () => navigation.navigate('Auth', { screen: 'Login' }) }
                 ]);
-            } else {
-                const data = await response.json();
-                Alert.alert("Failed", data.error || "Update failed");
             }
         } catch (error) {
-            Alert.alert("Error", "Server connection failed.");
+            if (error.response) {
+                // Server responded with an error (e.g., 500)
+                Alert.alert("Failed", error.response.data.error || "Update failed");
+            } else {
+                // Network error (wrong IP/Port or server down)
+                Alert.alert("Error", "Server connection failed. Check your network!");
+            }
+            console.error("Reset Password Error:", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -99,9 +108,22 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                             />
                         </View>
 
-                        <TouchableOpacity onPress={handleReset} style={styles.btn}>
-                            <LinearGradient colors={['#FFD1DC', '#FED9B8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gradientBtn}>
-                                <Text style={styles.btnText}>Update Password 🪄</Text>
+                        <TouchableOpacity 
+                            onPress={handleReset} 
+                            style={styles.btn}
+                            disabled={isLoading}
+                        >
+                            <LinearGradient 
+                                colors={isLoading ? ['#D1D1D1', '#A8A8A8'] : ['#FFD1DC', '#FED9B8']} 
+                                start={{ x: 0, y: 0 }} 
+                                end={{ x: 1, y: 0 }} 
+                                style={styles.gradientBtn}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color="#52333C" />
+                                ) : (
+                                    <Text style={styles.btnText}>Update Password 🪄</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
@@ -113,36 +135,30 @@ const ResetPasswordScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 20,
         height: 60
     },
-
     backBtn: { padding: 5 },
-
     headerTitle: {
         fontSize: 24,
         fontWeight: '800',
         color: '#7E5B64',
         marginLeft: 10
     },
-
     content: {
         flex: 1,
         padding: 30,
         justifyContent: 'center'
     },
-
     title: {
         fontSize: 30,
         fontWeight: '900',
         color: '#4A3439',
         textAlign: 'center'
     },
-
     subTitle: {
         fontSize: 14,
         color: '#8B7378',
@@ -150,7 +166,6 @@ const styles = StyleSheet.create({
         marginTop: 10,
         marginBottom: 30
     },
-
     card: {
         backgroundColor: 'rgba(255, 255, 255, 0.7)',
         borderRadius: 40,
@@ -158,11 +173,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FFF'
     },
-
     inputBox: {
         marginBottom: 20
     },
-
     label: {
         fontSize: 12,
         fontWeight: '800',
@@ -170,7 +183,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         marginLeft: 15
     },
-
     passwordContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -178,13 +190,11 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         paddingHorizontal: 20
     },
-
     input: {
         flex: 1,
         height: 50,
         color: '#52333C'
     },
-
     inputSimple: {
         backgroundColor: '#E9EAB3',
         height: 50,
@@ -192,18 +202,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         color: '#52333C'
     },
-
     btn: {
         marginTop: 10
     },
-
     gradientBtn: {
         height: 55,
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center'
     },
-
     btnText: {
         color: '#52333C',
         fontWeight: '900',
