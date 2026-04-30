@@ -5,12 +5,14 @@ import {
     StyleSheet,
     TextInput,
     TouchableOpacity,
-    Dimensions
+    Dimensions,
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Alert } from 'react-native';
+import { authApi } from '../../services/apiService'; 
 
 const { width } = Dimensions.get('window');
 
@@ -19,12 +21,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleResetPassword = async () => {
-        if (!email) {
+        const trimmedEmail = email.toLowerCase().trim();
+
+        if (!trimmedEmail) {
             Alert.alert("Oops!", "Please enter your email address first. ✉️");
             return;
         }
 
-        if (email.toLowerCase().trim() === 'admin@dayddy.com') {
+        if (trimmedEmail === 'admin@dayddy.com') {
             Alert.alert(
                 "Restricted Account 🛡️",
                 "For security reasons, this administrative account cannot be reset via the app. Please contact technical support."
@@ -34,13 +38,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            const response = await fetch('http://172.30.224.1:5000/api/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email }),
+            // Using the shared axios instance to ensure correct IP/Port (5001)
+            const response = await authApi.post('/forgot-password', { 
+                email: trimmedEmail 
             });
-
-            const data = await response.json();
 
             if (response.status === 200) {
                 Alert.alert(
@@ -49,15 +50,21 @@ const ForgotPasswordScreen = ({ navigation }) => {
                     [
                         {
                             text: "Next",
-                            onPress: () => navigation.navigate('ResetPassword', { userEmail: email })
+                            onPress: () => navigation.navigate('ResetPassword', { userEmail: trimmedEmail })
                         }
                     ]
                 );
-            } else {
-                Alert.alert("Error", data.error || "Something went wrong.");
             }
         } catch (error) {
-            Alert.alert("Network Error", "Server is sleeping. Try again later!");
+            // Handle specific error messages from server_4.js
+            if (error.response) {
+                const errorMessage = error.response.data.error || "Something went wrong.";
+                Alert.alert("Error", errorMessage);
+            } else {
+                // Network failure or timeout
+                Alert.alert("Network Error", "Server is sleeping. Try again later!");
+            }
+            console.error("Forgot Password Error:", error);
         } finally {
             setIsLoading(false);
         }
@@ -114,16 +121,17 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                 end={{ x: 1, y: 0 }}
                                 style={styles.submitBtn}
                             >
-                                <Text style={styles.submitBtnText}>
-                                    {isLoading ? "Sending..." : "Send Reset Link 🪄"}
-                                </Text>
+                                {isLoading ? (
+                                    <ActivityIndicator color="#52333C" />
+                                ) : (
+                                    <Text style={styles.submitBtnText}>Send Reset Link 🪄</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[styles.linkWrapper, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
+                    <View style={styles.linkWrapper}>
                         <Text style={styles.linkText}>Remembered it? </Text>
-
                         <TouchableOpacity
                             onPress={() => navigation.navigate('Auth')}
                             activeOpacity={0.5}
@@ -152,10 +160,27 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         height: 60
     },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: '#7E5B64', marginLeft: 10 },
-
-    content: { flex: 1, paddingHorizontal: 30, paddingTop: 40, alignItems: 'center' },
-    mainTitle: { fontSize: 32, fontWeight: '900', color: '#4A3439', textAlign: 'center' },
+    headerTitle: { 
+        fontSize: 24, 
+        fontWeight: '800', 
+        color: '#7E5B64', 
+        marginLeft: 10 
+    },
+    backBtn: {
+        padding: 5
+    },
+    content: { 
+        flex: 1, 
+        paddingHorizontal: 30, 
+        paddingTop: 40, 
+        alignItems: 'center' 
+    },
+    mainTitle: { 
+        fontSize: 32, 
+        fontWeight: '900', 
+        color: '#4A3439', 
+        textAlign: 'center' 
+    },
     subTitle: {
         fontSize: 16,
         color: '#8B7378',
@@ -164,7 +189,6 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         paddingHorizontal: 10
     },
-
     card: {
         backgroundColor: 'rgba(255, 255, 255, 0.7)',
         width: '100%',
@@ -206,7 +230,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#52333C',
     },
-
     btnContainer: { width: '100%', marginTop: 25 },
     submitBtn: {
         height: 65,
@@ -215,23 +238,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         elevation: 3,
     },
-
     submitBtnText: {
         color: '#52333C',
         fontWeight: '900',
         fontSize: 18
     },
-
-    linkWrapper: { marginTop: 30 },
-
+    linkWrapper: { 
+        marginTop: 30,
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+    },
     linkText: { color: '#7B5F45', fontSize: 14 },
-
     linkBold: {
         fontWeight: '900',
         textDecorationLine: 'underline',
         color: '#7E5B64'
     },
-
     tipCard: {
         flexDirection: 'row',
         backgroundColor: 'rgba(214, 228, 255, 0.5)',
@@ -240,9 +263,7 @@ const styles = StyleSheet.create({
         marginTop: 40,
         alignItems: 'center'
     },
-
     tipIcon: { marginRight: 15 },
-
     tipText: {
         flex: 1,
         fontSize: 13,
