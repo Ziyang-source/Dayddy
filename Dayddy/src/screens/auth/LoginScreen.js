@@ -64,7 +64,7 @@ const LoginScreen = ({ navigation }) => {
         else navigation.replace('Main');
       }
     } catch (error) {
-      console.error('[Login] error:', error);
+      console.log('[Login] error:', error);
       const msg = error?.response?.data?.error || error?.message || 'Cannot connect to server.';
       Alert.alert('Login Failed', msg);
     }

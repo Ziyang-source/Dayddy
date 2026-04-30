@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { syncProfileToCloud } from '../services/apiService';
 import {
   Alert,
@@ -28,34 +29,37 @@ export default function ProfileScreen({ navigation }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const role = await AsyncStorage.getItem('userRole');
-        setIsGuest(role === 'guest');
+  const loadProfile = useCallback(async () => {
+    try {
+      const role = await AsyncStorage.getItem('userRole');
+      setIsGuest(role === 'guest');
 
-        const savedProfile = await AsyncStorage.getItem('@dayddy_profile');
-        const tempUsername = await AsyncStorage.getItem('username');
-        const tempEmail = await AsyncStorage.getItem('userEmail');
+      const savedProfile = await AsyncStorage.getItem('@dayddy_profile');
+      const tempUsername = await AsyncStorage.getItem('username');
+      const tempEmail = await AsyncStorage.getItem('userEmail');
 
-        if (savedProfile) {
-          setProfile(JSON.parse(savedProfile));
-        } else {
-          setProfile(prev => ({
-            ...prev,
-            name: tempUsername || '',
-            email: tempEmail || ''
-          }));
-        }
-      } catch (error) {
-        Alert.alert('Error', 'Could not load profile data.');
-      } finally {
-        setIsLoading(false);
+      if (savedProfile) {
+        setProfile(JSON.parse(savedProfile));
+      } else {
+        setProfile(prev => ({
+          ...prev,
+          name: tempUsername || '',
+          email: tempEmail || ''
+        }));
       }
-    };
-
-    loadProfile();
+    } catch (error) {
+      Alert.alert('Error', 'Could not load profile data.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const updateField = (field, value) => {
     if (isGuest) return;
@@ -142,7 +146,7 @@ export default function ProfileScreen({ navigation }) {
                 console.log('[Logout] AsyncStorage cleared, navigating to Auth');
                 const parent = navigation.getParent && navigation.getParent();
                 if (parent && parent.reset) {
-                  parent.reset({ index: 0, routes: [{ name: 'Auth' }] });
+                  parent.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Login' } }] });
                 } else {
                   navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
                 }

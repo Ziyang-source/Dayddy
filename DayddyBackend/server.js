@@ -30,12 +30,39 @@ const db = new sqlite3.Database(DB_NAME, (err) => {
 });
 
 db.serialize(() => {
+    // Users Table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
         email TEXT UNIQUE,
         password TEXT,
         role TEXT DEFAULT 'user'
+    )`);
+
+    // Tasks Table
+    db.run(`CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        title TEXT NOT NULL,
+        description TEXT,
+        due_date TEXT,
+        due_time TEXT,
+        priority TEXT DEFAULT 'medium',
+        tag TEXT DEFAULT 'general',
+        reminder INTEGER DEFAULT 1,
+        completed INTEGER DEFAULT 0
+    )`);
+
+    // Events Table
+    db.run(`CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        title TEXT NOT NULL,
+        event_date TEXT,
+        event_time TEXT,
+        tag TEXT DEFAULT 'general',
+        reminder INTEGER DEFAULT 1,
+        notes TEXT
     )`);
 
     const adminEmail = 'admin@dayddy.com';
@@ -121,6 +148,21 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+app.get('/api/tasks', (req, res) => {
+    const { user_id } = req.query;
+    db.all('SELECT * FROM tasks WHERE user_id = ?', [user_id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(200).json(rows || []);
+    });
+});
+
+app.get('/api/events', (req, res) => {
+    const { user_id } = req.query;
+    db.all('SELECT * FROM events WHERE user_id = ?', [user_id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(200).json(rows || []);
+    });
+});
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Dayddy Backend running on http://0.0.0.0:${PORT}`);
 });

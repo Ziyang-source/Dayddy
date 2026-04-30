@@ -29,7 +29,12 @@ const MainStackNav = createStackNavigator();
 
 function AuthStack() {
   return (
-    <AuthStackNav.Navigator screenOptions={{ headerShown: false }}>
+    
+    <AuthStackNav.Navigator screenOptions={{ 
+        headerShown: false,
+        animation: 'none',
+      }}
+    >
       <AuthStackNav.Screen name="Splash" component={SplashScreen} />
       <AuthStackNav.Screen name="Onboarding" component={OnboardingScreen} />
       <AuthStackNav.Screen name="Login" component={LoginScreen} />
@@ -43,7 +48,7 @@ function AuthStack() {
 
 function MainStack() {
   return (
-    <MainStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <MainStackNav.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <MainStackNav.Screen name="TodoList" component={ToDoListScreen} />
       <MainStackNav.Screen name="EventList" component={EventListScreen} />
       <MainStackNav.Screen name="CreateTask" component={CreateTaskScreen} />
