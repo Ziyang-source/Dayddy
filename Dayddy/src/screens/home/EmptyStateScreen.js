@@ -1,7 +1,7 @@
 import React from 'react';
 import {SafeAreaView, ScrollView, View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import BottomNavBar from '../../components/BottomNavBar';
+import BottomNavBar from '../../navigation/BottomNavBar';
 
 export default function EmptyStateScreen({navigation}) {
   return (
@@ -25,7 +25,10 @@ export default function EmptyStateScreen({navigation}) {
           Your digital quilt is waiting to be filled with cozy moments. Add something!
         </Text>
 
-        <TouchableOpacity style={styles.mainBtn}>
+        <TouchableOpacity 
+          style={styles.mainBtn}
+          onPress={() => navigation.navigate('CreateEvent')}
+        >
           <Icon name="plus-circle" size={26} color="#fff" />
           <Text style={styles.mainBtnText}>Create First Plan</Text>
         </TouchableOpacity>
@@ -36,7 +39,9 @@ export default function EmptyStateScreen({navigation}) {
             <Text style={styles.quickText}>Quick Event</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickBtn}>
+          <TouchableOpacity style={styles.quickBtn}
+            onPress={() => navigation.navigate('CreateTask')}
+            >
             <Icon name="check-circle-outline" size={22} color="#69643F" />
             <Text style={styles.quickText}>New Task</Text>
           </TouchableOpacity>

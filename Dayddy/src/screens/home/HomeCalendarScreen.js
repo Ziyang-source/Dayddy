@@ -1,7 +1,9 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {SafeAreaView, ScrollView, View, Text, TouchableOpacity, StyleSheet, ImageBackground} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import BottomNavBar from '../../components/BottomNavBar';
+import BottomNavBar from '../../navigation/BottomNavBar';
+import {getEvents, getTasks} from '../../services/database';
 
 const week = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -60,6 +62,22 @@ export default function HomeCalendarScreen({navigation}) {
     );
   };
 
+  const [events, setEvents] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  useFocusEffect(
+    useCallback(() => {
+      const loadCalendarData = async () => {
+        const allEvents = await getEvents();
+        const allTasks = await getTasks();
+
+        setEvents(allEvents || []);
+        setTasks(allTasks || []);
+      };
+
+      loadCalendarData();
+    }, [])
+  );
+
   const goPreviousMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
@@ -102,6 +120,28 @@ export default function HomeCalendarScreen({navigation}) {
     }, 100);
   }
 }, [showPicker, currentMonth]);
+
+  const hasItemsOnDate = date => {
+    if (!date) return false;
+
+    const dateString = formatDate(date);
+
+    const hasEvent = events.some(event => event.event_date === dateString);
+    const hasTask = tasks.some(task => task.due_date === dateString);
+
+    return hasEvent || hasTask;
+  };
+
+  const todayString = formatDate(new Date());
+
+  const todayTasks = tasks
+    .filter(task => task.due_date === todayString && task.completed !== 1)
+    .sort((a, b) => {
+      const timeA = a.due_time || '23:59';
+      const timeB = b.due_time || '23:59';
+      return timeA.localeCompare(timeB);
+    })
+    .slice(0, 2);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -207,6 +247,7 @@ export default function HomeCalendarScreen({navigation}) {
             style={[
               styles.dayCircle,
               !date && styles.disabledDay,
+              hasItemsOnDate(date) && styles.hasItemDay,
               isToday(date) && styles.today,
               isSelected(date) && styles.selectedDay,
             ]}
@@ -230,23 +271,35 @@ export default function HomeCalendarScreen({navigation}) {
 
         <Text style={styles.sectionTitle}>✦ Today's Joy</Text>
         <View style={styles.joyRow}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.joyCard, {backgroundColor: '#FFD9B6'}]}
-            onPress={() => navigation.navigate('TodoList')}
-          >
-            <Text style={styles.joyTitle}>Water the{`\n`}plants</Text>
-            <Text style={styles.joyTime}>◔  10:00 AM</Text>
-          </TouchableOpacity>
-            
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.joyCard, {backgroundColor: '#E4E5FA'}]}
-            onPress={() => navigation.navigate('TodoList')}
-          >
-            <Text style={styles.joyTitle}>Read 10{`\n`}pages</Text>
-            <Text style={styles.joyTime}>◔  09:00 PM</Text>
-          </TouchableOpacity>
+          {todayTasks.length > 0 ? (
+            todayTasks.map((task, index) => (
+              <TouchableOpacity
+               key={task.id}
+                activeOpacity={0.8}
+                style={[
+                  styles.joyCard,
+                  {backgroundColor: index === 0 ? '#FFD9B6' : '#E4E5FA'},
+                ]}
+                onPress={() => navigation.navigate('TaskDetail', {task})}
+              >
+                <Text style={styles.joyTitle}>
+                  {task.title}
+                </Text>
+                <Text style={styles.joyTime}>
+                  ◔ {task.due_time || 'No time'}
+                </Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.joyCard, {backgroundColor: '#FFD9B6'}]}
+              onPress={() => navigation.navigate('CreateTask')}
+            >
+              <Text style={styles.joyTitle}>Add your{`\n`}first task</Text>
+              <Text style={styles.joyTime}>Tap to create</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.mindCard}>
           <Text style={styles.mindTitle}>Stay Mindful.</Text>
@@ -261,7 +314,7 @@ export default function HomeCalendarScreen({navigation}) {
         >
         <Icon name="plus" size={38} color="#fff" />
       </TouchableOpacity>
-      <BottomNavBar activeRoute="EventDetail" navigation={navigation} />
+      <BottomNavBar activeRoute="HomeCalendar" navigation={navigation} />
     </SafeAreaView>
   );
 }
@@ -532,6 +585,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFBF',
     marginRight: 10,
     alignItems: 'center',
+  },
+
+  hasItemDay: {
+    backgroundColor: '#FFE4EC',
+    borderWidth: 2,
+    borderColor: '#7E5B64',
   },
 
 });

@@ -81,7 +81,9 @@ const LoginScreen = ({ navigation }) => {
 
       Alert.alert("Welcome! ✨", "Enjoy exploring Dayddy as a guest.");
 
-      navigation.navigate('Main');
+      navigation.navigate('Main', {
+        screen: 'HomeCalendar',
+      });
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "Could not enter guest mode.");

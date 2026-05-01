@@ -1,8 +1,8 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useState, useMemo} from 'react';
 import {SafeAreaView, ScrollView, View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {getItemsByDate} from '../../data/dayddyData';
-import BottomNavBar from '../../components/BottomNavBar';
+import { getEvents, getTasks } from '../../services/database';
+import BottomNavBar from '../../navigation/BottomNavBar';
 
 const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -12,9 +12,23 @@ const toISO = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStar
 export default function DailyViewScreen({navigation, route}) {
   const selectedDate = route.params?.selectedDate || '2024-10-24';
   const dateObj = new Date(`${selectedDate}T00:00:00`);
-  const items = getItemsByDate(selectedDate);
-  const events = items.filter(i => i.type === 'event');
-  const tasks = items.filter(i => i.type === 'task');
+  const [events, setEvents] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const allEvents = await getEvents();
+      const allTasks = await getTasks();
+
+      const filteredEvents = allEvents.filter(e => e.event_date === selectedDate);
+      const filteredTasks = allTasks.filter(t => t.due_date === selectedDate);
+
+      setEvents(filteredEvents);
+      setTasks(filteredTasks);
+    };
+
+    loadData();
+  }, [selectedDate]);
 
   const changeDay = direction => {
     const next = new Date(dateObj);
@@ -23,7 +37,7 @@ export default function DailyViewScreen({navigation, route}) {
   };
 
   const openFocusFlow = () => {
-    if (items.length > 0) navigation.navigate('UpcomingEvents', {selectedDate});
+    if ((events.length + tasks.length) > 0) navigation.navigate('UpcomingEvents', {selectedDate});
     else navigation.navigate('EmptyState', {selectedDate});
   };
 
@@ -57,29 +71,50 @@ export default function DailyViewScreen({navigation, route}) {
           <Text style={styles.focusTitle}>Focus Flow</Text>
           <Text style={styles.focusLine}>•  {events.length} Events</Text>
           <Text style={styles.focusLine}>•  {tasks.length} Tasks</Text>
-          <View style={styles.progressBack}><View style={[styles.progressFill, {width: items.length ? '60%' : '8%'}]} /></View>
-          <Text style={styles.progressText}>{items.length ? '60% Through Your Day' : '0% Through Your Day'}</Text>
+          <View style={[styles.progressFill, {width: (events.length + tasks.length) ? '100%' : '0%'}]} />
+          <Text style={styles.progressText}>{(events.length + tasks.length)? '60% Through Your Day' : '0% Through Your Day'}</Text>
         </TouchableOpacity>
 
         <View style={styles.timeline}>
-          {items.length === 0 ? (
-            <View style={styles.emptyHint}><Text style={styles.emptyHintText}>No events or tasks for this day. Tap Focus Flow to open empty state.</Text></View>
-          ) : items.map(item => (
-            <View key={item.id} style={styles.timeRow}>
-              <Text style={styles.timeText}>{item.time}</Text>
-              <View style={[styles.eventCard, item.type === 'task' && styles.taskCard]}>
-                <Text style={[styles.eventTitle, item.completed && styles.completedText]}>{item.title}</Text>
-                <Text style={styles.eventSub}>{item.description}</Text>
-                {item.category ? <Text style={styles.pill}>{item.category}</Text> : null}
-              </View>
+          {(events.length + tasks.length) === 0 ? (
+            <View style={styles.emptyHint}>
+              <Text style={styles.emptyHintText}>
+                No events or tasks for this day. Tap Focus Flow to open empty state.
+              </Text>
             </View>
-          ))}
+         ) : (
+            [...events, ...tasks].map(item => {
+              const isTask = item.due_date !== undefined;
+
+              return (
+                <View key={`${isTask ? 'task' : 'event'}-${item.id}`} style={styles.timeRow}>
+                  <Text style={styles.timeText}>
+                   {item.event_time || item.due_time || 'All day'}
+                  </Text>
+
+                  <View style={[styles.eventCard, isTask && styles.taskCard]}>
+                    <Text style={[styles.eventTitle, item.completed === 1 && styles.completedText]}>
+                      {item.title}
+                    </Text>
+
+                    <Text style={styles.eventSub}>
+                      {item.notes || item.description || 'No details'}
+                    </Text>
+
+                    {item.tag ? (
+                      <Text style={styles.pill}>{item.tag}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })
+          )}
         </View>
 
         <Text style={styles.captureTitle}>Capture the Small Joys ✦</Text>
         <Text style={styles.captureText}>Your schedule isn’t just a list of obligations—it’s a canvas for your day. We help you find quiet spaces between meetings to reconnect with what matters.</Text>
       </ScrollView>
-      <BottomNavBar activeRoute="Home" navigation={navigation} />
+      <BottomNavBar activeRoute="HomeCalendar" navigation={navigation} />
     </SafeAreaView>
   );
 }

@@ -1,8 +1,13 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {SafeAreaView, ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {getAllUpcomingItems, getItemsByDate} from '../../data/dayddyData';
-import BottomNavBar from '../../components/BottomNavBar';
+import {getEvents} from '../../services/database';
+import BottomNavBar from '../../navigation/BottomNavBar';
+
+const getTodayISO = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
 
 function EventCard({item}) {
   return (
@@ -22,7 +27,23 @@ function EventCard({item}) {
 
 export default function UpcomingEventsScreen({navigation, route}) {
   const selectedDate = route.params?.selectedDate;
-  const items = selectedDate ? getItemsByDate(selectedDate) : getAllUpcomingItems();
+  const todayDate = getTodayISO();
+
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      const allEvents = await getEvents();
+
+      const filteredEvents = (allEvents || []).filter(event => {
+        return event.event_date === (selectedDate || todayDate);
+      });
+
+      setItems(filteredEvents);
+   };
+
+    loadEvents();
+  }, [selectedDate]);
 
   const [searchText, setSearchText] = useState('');
 
@@ -85,13 +106,27 @@ export default function UpcomingEventsScreen({navigation, route}) {
 
         <Text style={styles.section}>TODAY</Text>
 
-        {filteredItems.map(item => (
-          <EventCard key={item.id} item={item} />
-        ))}
-      </ScrollView>
+        {filteredItems.length > 0 ? (
+          filteredItems.map(item => (
+            <EventCard key={item.id} item={item} />
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Icon name="calendar-blank-outline" size={78} color="#83835d35" />
+            <Text style={styles.emptyTitle}>No events for today</Text>
+            <Text style={styles.emptySubtitle}>
+              Add something with today's date to see it here.
+            </Text>
+          </View>
+        )}
+        </ScrollView>
 
-      <TouchableOpacity style={styles.floatBtn}>
+      <TouchableOpacity 
+        style={styles.floatBtn}
+        onPress={() =>navigation.navigate('CreateEvent')}
+      >
         <Icon name="plus" size={32} color="#fff" />
+
       </TouchableOpacity>
       <BottomNavBar activeRoute="UpcomingEvents" navigation={navigation} />
     </SafeAreaView>
@@ -122,4 +157,27 @@ const styles = StyleSheet.create({
   cardDesc: {fontSize: 14, color: '#5E5547', marginTop: 6, lineHeight: 20}, 
   place: {fontSize: 12, color: '#5E5547', marginTop: 14}, 
   floatBtn: {position: 'absolute', right: 28, bottom: 98, width: 60, height: 60, borderRadius: 30, backgroundColor: '#8B5E70', alignItems: 'center', justifyContent: 'center'},
+  
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 70,
+    paddingHorizontal: 30,
+  },
+
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#83835d',
+    marginTop: 14,
+    textAlign: 'center',
+  },
+
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#7A6352',
+    marginTop: 10,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });
