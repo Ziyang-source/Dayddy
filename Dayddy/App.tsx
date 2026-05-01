@@ -17,11 +17,14 @@ import ResetPasswordScreen from './src/screens/auth/ResetPasswordScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 import ToDoListScreen from './src/screens/task/ToDoListScreen';
-import EventListScreen from './src/screens/event/EventListScreen';
 import CreateTaskScreen from './src/screens/task/CreateTaskScreen';
 import CreateEventScreen from './src/screens/event/CreateEventScreen';
 import TaskDetailScreen from './src/screens/task/TaskDetailScreen';
 import EventDetailScreen from './src/screens/event/EventDetailScreen';
+import HomeCalendarScreen from './src/screens/home/HomeCalendarScreen';
+import DailyViewScreen from './src/screens/home/DailyViewScreen';
+import UpcomingEventsScreen from './src/screens/home/UpcomingEventsScreen';
+import EmptyStateScreen from './src/screens/home/EmptyStateScreen';
 
 const RootStack = createStackNavigator();
 const AuthStackNav = createStackNavigator();
@@ -48,13 +51,22 @@ function AuthStack() {
 
 function MainStack() {
   return (
-    <MainStackNav.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
+    <MainStackNav.Navigator
+      initialRouteName="HomeCalendar"
+      screenOptions={{ headerShown: false, animation: 'none' }}
+    >
+      <MainStackNav.Screen name="HomeCalendar" component={HomeCalendarScreen} />
+      <MainStackNav.Screen name="DailyView" component={DailyViewScreen} />
+      <MainStackNav.Screen name="UpcomingEvents" component={UpcomingEventsScreen} />
+      <MainStackNav.Screen name="EmptyState" component={EmptyStateScreen} />
+
       <MainStackNav.Screen name="TodoList" component={ToDoListScreen} />
-      <MainStackNav.Screen name="EventList" component={EventListScreen} />
       <MainStackNav.Screen name="CreateTask" component={CreateTaskScreen} />
-      <MainStackNav.Screen name="CreateEvent" component={CreateEventScreen} />
       <MainStackNav.Screen name="TaskDetail" component={TaskDetailScreen} />
+
+      <MainStackNav.Screen name="CreateEvent" component={CreateEventScreen} />
       <MainStackNav.Screen name="EventDetail" component={EventDetailScreen} />
+
       <MainStackNav.Screen name="Profile" component={ProfileScreen} />
       <MainStackNav.Screen name="Admin" component={AdminDashboardScreen} />
     </MainStackNav.Navigator>
