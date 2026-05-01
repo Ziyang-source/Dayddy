@@ -14,6 +14,11 @@ import HelpScreen from '../screens/auth/HelpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 
+import HomeCalendarScreen from '../screens/home/HomeCalendarScreen';
+import DailyViewScreen from '../screens/home/DailyViewScreen';
+import UpcomingEventsScreen from '../screens/home/UpcomingEventsScreen';
+import EmptyStateScreen from '../screens/home/EmptyStateScreen';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -37,6 +42,20 @@ function MainTabs() {
     <Tab.Navigator>
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
+  );
+}
+
+function MainStack() {
+  return (
+    <Stack.Navigator initialRouteName="HomeCalendar" screenOptions={{headerShown: false}}>
+      <Stack.Screen name="HomeCalendar" component={HomeCalendarScreen} />
+      <Stack.Screen name="EventDetail" component={HomeCalendarScreen} />
+      <Stack.Screen name="DailyView" component={DailyViewScreen} />
+      <Stack.Screen name="UpcomingEvents" component={UpcomingEventsScreen} />
+      <Stack.Screen name="EmptyState" component={EmptyStateScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Admin" component={AdminDashboardScreen} />
+    </Stack.Navigator>
   );
 }
 
