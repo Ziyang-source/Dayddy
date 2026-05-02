@@ -84,8 +84,8 @@ const CreateTaskScreen: React.FC<CreateTaskScreenProps> = ({ navigation, route }
   const [description, setDescription] = useState(editingTask?.description ?? '');
   const [dueDate, setDueDate] = useState<Date | null>(() => parseDateString(editingTask?.due_date));
   const [dueTime, setDueTime] = useState<Date | null>(null);
-  const [priority, setPriority] = useState(editingTask?.priority ?? 'medium');
-  const [tag, setTag] = useState(editingTask?.tag ?? 'Assignment');
+    const [priority, setPriority] = useState(editingTask?.priority ?? '');
+  const [tag, setTag] = useState(editingTask?.tag ?? '');
   const [customTags, setCustomTags] = useState<any[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -118,17 +118,36 @@ const CreateTaskScreen: React.FC<CreateTaskScreenProps> = ({ navigation, route }
   };
 
   const handleAddCategory = async () => {
-    if (newCategoryName.trim()) {
-      await createCategory(newCategoryName.trim());
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      Alert.alert('Invalid', 'Please enter a category name.');
+      return;
+    }
+    
+    const exists = customTags.some(t => t.label?.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      Alert.alert('Duplicate', `Category "${trimmed}" already exists.`);
+      return;
+    }
+    
+    try {
+      await createCategory(trimmed);
       await fetchTags();
-      setTag(newCategoryName.trim());
+      if (!priority || !priority.trim()) {
+        Alert.alert('Select importance', 'Please select an importance level.');
+        return;
+      }
+      setTag(trimmed);
       setNewCategoryName('');
       setModalVisible(false);
+      Alert.alert('Success', `Category "${trimmed}" created!`);
+    } catch (error) {
+      Alert.alert('Error', 'Could not create category.');
     }
   };
 
   const closeCategoryModal = () => {
-    Keyboard.dismiss();
+    setNewCategoryName('');
     setModalVisible(false);
   };
 
@@ -183,6 +202,14 @@ const CreateTaskScreen: React.FC<CreateTaskScreenProps> = ({ navigation, route }
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Empty Task', "What's the plan? ✨");
+      return;
+    }
+    if (!tag || !tag.trim()) {
+      Alert.alert('Select category', 'Please select a category.');
+      return;
+    }
+    if (!priority || !priority.trim()) {
+      Alert.alert('Select importance', 'Please select an importance level.');
       return;
     }
     setSaving(true);
@@ -356,17 +383,23 @@ const CreateTaskScreen: React.FC<CreateTaskScreenProps> = ({ navigation, route }
 
       <Modal visible={isModalVisible} transparent animationType="fade" onRequestClose={closeCategoryModal}>
         <Pressable style={styles.modalOverlay} onPress={closeCategoryModal}>
-          <Pressable style={styles.modalContent} onPress={() => { }}>
+          <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>New Category</Text>
-            <TextInput style={styles.modalInput} placeholder="Type category name..." value={newCategoryName} onChangeText={setNewCategoryName} autoFocus />
-            <div style={styles.modalButtons}>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Type category name..."
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
               <TouchableOpacity onPress={closeCategoryModal}>
                 <Text style={styles.modalBtnCancel}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleAddCategory}>
                 <Text style={styles.modalBtnAdd}>Add</Text>
               </TouchableOpacity>
-            </div>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>

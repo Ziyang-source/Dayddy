@@ -83,14 +83,22 @@ const EventDetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
           await deleteEvent(Number(event.id));
-          navigation.goBack();
+          const origin = route?.params?.origin;
+          const selectedDate = route?.params?.selectedDate;
+          if (origin) {
+            navigation.navigate(origin, { selectedDate });
+          } else {
+            navigation.navigate('UpcomingEvents', { selectedDate });
+          }
         }
       }
     ]);
   };
 
   const handleEdit = () => {
-    navigation.navigate('CreateEvent', { event });
+    const origin = route?.params?.origin;
+    const selectedDate = route?.params?.selectedDate;
+    navigation.navigate('CreateEvent', { event, origin, selectedDate });
   };
 
   return (

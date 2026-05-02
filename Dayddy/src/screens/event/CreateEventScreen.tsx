@@ -68,13 +68,12 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation, route
     editingEvent?.event_date ? new Date(editingEvent.event_date) : null
   );
   const [eventTime, setEventTime] = useState<Date | null>(parseEventTime(editingEvent?.event_time));
-  const [tag, setTag] = useState(editingEvent?.tag ?? 'Festival');
+  const [tag, setTag] = useState(editingEvent?.tag ?? '');
   const [customTags, setCustomTags] = useState<any[]>([]);
   const [reminder, setReminder] = useState(editingEvent?.reminder === 1);
   const [saving, setSaving] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryIcon, setNewCategoryIcon] = useState('tag-outline');
 
   useEffect(() => {
     fetchTags();
@@ -90,17 +89,32 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation, route
   };
 
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    try {
-      await createEventCategory(newCategoryName.trim());
-      setCustomTags((prev) => [{ label: newCategoryName.trim(), icon: newCategoryIcon }, ...prev]);
-      setTag(newCategoryName.trim());
-      setNewCategoryName('');
-      setNewCategoryIcon('tag-outline');
-      setModalVisible(false);
-    } catch {
-      Alert.alert('Error', 'Could not add category.');
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      Alert.alert('Invalid', 'Please enter a category name.');
+      return;
     }
+    const exists = customTags.some(t => t.label?.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      Alert.alert('Duplicate', `Category "${trimmed}" already exists.`);
+      return;
+    }
+
+    try {
+      await createEventCategory(trimmed);
+      await fetchTags();
+      setTag(trimmed);
+      setNewCategoryName('');
+      setModalVisible(false);
+      Alert.alert('Success', `Category "${trimmed}" created!`);
+    } catch (error) {
+      Alert.alert('Error', 'Could not create category.');
+    }
+  };
+
+  const closeCategoryModal = () => {
+    setNewCategoryName('');
+    setModalVisible(false);
   };
 
   const openDatePicker = () => {
@@ -166,6 +180,11 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation, route
       return;
     }
 
+    if (!tag || !tag.trim()) {
+      Alert.alert('Select category', 'Please select a category.');
+      return;
+    }
+
     setSaving(true);
     try {
       const eventDateString = eventDate
@@ -186,7 +205,13 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation, route
       } else {
         await createEvent(payload);
       }
-      navigation.goBack();
+      const origin = route?.params?.origin;
+      const selectedDate = route?.params?.selectedDate;
+      if (origin) {
+        navigation.navigate(origin, { selectedDate });
+      } else {
+        navigation.goBack();
+      }
     } catch {
       Alert.alert('Error', 'Failed to save event.');
     } finally {
@@ -322,23 +347,25 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation, route
         </View>
       </ScrollView>
 
-      {/* Category Modal */}
-      <Modal visible={isModalVisible} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-          <Pressable style={styles.modalContent} onPress={() => { }}>
+      <Modal visible={isModalVisible} transparent animationType="fade" onRequestClose={closeCategoryModal}>
+        <Pressable style={styles.modalOverlay} onPress={closeCategoryModal}>
+          <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>New Category</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Category name..."
+              placeholder="Type category name..."
               value={newCategoryName}
               onChangeText={setNewCategoryName}
               autoFocus
             />
-            <TouchableOpacity onPress={handleAddCategory} activeOpacity={0.85}>
-              <LinearGradient colors={['#FFD1DC', '#FED9B8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.saveBtn}>
-                <Text style={styles.saveBtnText}>Add</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity onPress={closeCategoryModal}>
+                <Text style={styles.modalBtnCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAddCategory}>
+                <Text style={styles.modalBtnAdd}>Add</Text>
+              </TouchableOpacity>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -565,6 +592,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 16,
     color: '#39391b',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 24,
+    marginTop: 8,
+  },
+  modalBtnCancel: {
+    color: '#666',
+    fontFamily: FontFamily.bodyBold,
+  },
+  modalBtnAdd: {
+    color: '#7e5b64',
+    fontFamily: FontFamily.bodyBold,
   },
 });
 

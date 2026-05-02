@@ -4,7 +4,7 @@ const CLOUD_HOST = '172.30.224.1';
 const FALLBACK_API_BASE_URL = 'https://jsonplaceholder.typicode.com';
 
 export const authApi = axios.create({
-  baseURL: `http://${CLOUD_HOST}:5001/api`, // Updated to 5001
+  baseURL: `http://${CLOUD_HOST}:5001/api`, 
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

@@ -46,8 +46,8 @@ class TaskCreate(BaseModel):
     description: str = ""
     due_date: str = ""
     due_time: str = ""
-    priority: str = "medium"
-    tag: str = "general"
+    priority: str
+    tag: str
     reminder: int = 1
     completed: int = 0
 
@@ -63,9 +63,9 @@ class TaskCompleteUpdate(BaseModel):
 class EventCreate(BaseModel):
     user_id: int
     title: str
-    event_date: str = ""
-    event_time: str = ""
-    tag: str = "general"
+    event_date: str
+    event_time: str
+    tag: str
     reminder: int = 1
     notes: str = ""
 

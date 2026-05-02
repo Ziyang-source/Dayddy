@@ -310,7 +310,7 @@ export default function HomeCalendarScreen({navigation}) {
       <TouchableOpacity 
         style={styles.floatBtn}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('CreateEvent')}
+        onPress={() => navigation.navigate('CreateTask')}
         >
         <Icon name="plus" size={38} color="#fff" />
       </TouchableOpacity>
