@@ -34,6 +34,31 @@ const DEFAULT_TAGS = [
   { label: 'Concert', icon: 'ticket-confirmation-outline' },
 ];
 
+const mergeUniqueTags = (defaultTags: Array<{ label: string; icon: string }>, dbTags: Array<{ label?: string; icon?: string }>) => {
+  const seen = new Set<string>();
+  const merged: Array<{ label: string; icon: string }> = [];
+
+  for (const tag of [...defaultTags, ...dbTags]) {
+    const label = String(tag?.label ?? '').trim();
+    if (!label) {
+      continue;
+    }
+
+    const normalized = label.toLowerCase();
+    if (seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    merged.push({
+      label,
+      icon: tag?.icon ?? 'tag-outline',
+    });
+  }
+
+  return merged;
+};
+
 const parseEventTime = (time?: string) => {
   if (!time) return null;
   const parts = String(time).split(':');
@@ -219,7 +244,7 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation, route
     }
   };
 
-  const allTags = [...DEFAULT_TAGS, ...customTags];
+  const allTags = mergeUniqueTags(DEFAULT_TAGS, customTags);
 
   return (
     <SafeAreaView style={styles.safe}>
