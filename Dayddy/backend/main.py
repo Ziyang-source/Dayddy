@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "dayddy_events.sqlite3"
+DB_PATH = BASE_DIR / "dayddy_data.sqlite3"
 
 DEFAULT_TASK_CATEGORIES = [
     "Assignment",
