@@ -163,6 +163,52 @@ app.get('/api/events', (req, res) => {
         res.status(200).json(rows || []);
     });
 });
+
+app.put('/api/users/update', (req, res) => {
+  const { name, email, oldEmail } = req.body;
+  
+  const sql = `UPDATE users SET username = ?, email = ? WHERE email = ?`;
+  
+  db.run(sql, [name, email, oldEmail], function(err) {
+    if (err) {
+      console.error("Database Update Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ success: true, message: "Profile updated successfully" });
+  });
+});
+
+app.get('/api/admin/stats', (req, res) => {
+    const sqlUsers = "SELECT COUNT(*) as total FROM users";
+    const sqlEvents = "SELECT COUNT(*) as total FROM events";
+    const sqlTasksComp = "SELECT COUNT(*) as total FROM tasks WHERE completed = 1";
+    const sqlTasksAll = "SELECT COUNT(*) as total FROM tasks";
+
+    db.get(sqlUsers, [], (err, userRow) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        db.get(sqlEvents, [], (err, eventRow) => {
+
+            db.get(sqlTasksComp, [], (err, compRow) => {
+                db.get(sqlTasksAll, [], (err, allRow) => {
+                    res.json({
+                        stats: {
+                            users: userRow?.total || 0,
+                            events: eventRow?.total || 0,
+                            tasksCompleted: compRow?.total || 0,
+                            completionRate: allRow?.total > 0 ? Math.round((compRow.total / allRow.total) * 100) : 0
+                        },
+                        activityData: [12, 18, 15, 25, 21, 28, 30]
+                    });
+                });
+            });
+        });
+    });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Dayddy Backend running on http://0.0.0.0:${PORT}`);
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { ActivityIndicator, View, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -29,6 +30,7 @@ import EmptyStateScreen from './src/screens/home/EmptyStateScreen';
 const RootStack = createStackNavigator();
 const AuthStackNav = createStackNavigator();
 const MainStackNav = createStackNavigator();
+const Drawer = createDrawerNavigator();
 
 function AuthStack() {
   return (
@@ -68,8 +70,33 @@ function MainStack() {
       <MainStackNav.Screen name="EventDetail" component={EventDetailScreen} />
 
       <MainStackNav.Screen name="Profile" component={ProfileScreen} />
-      <MainStackNav.Screen name="Admin" component={AdminDashboardScreen} />
+    
     </MainStackNav.Navigator>
+  );
+}
+
+function AdminStack() {
+  return (
+    <Drawer.Navigator
+      screenOptions={{
+        headerShown: true, 
+        headerTintColor: '#000000',
+        headerStyle: { backgroundColor: '#FFF6EE' },
+      }}
+    >
+
+      <Drawer.Screen 
+        name="Dashboard" 
+        component={AdminDashboardScreen} 
+        options={{ title: 'Admin Dashboard' }}
+      />
+
+      <Drawer.Screen 
+        name="UserView" 
+        component={MainStack} 
+        options={{ title: 'User Interface', headerShown: false }}
+      />
+    </Drawer.Navigator>
   );
 }
 
@@ -84,14 +111,17 @@ const LoadingScreen = () => (
 export default function App(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userToken, setUserToken] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const bootstrapAsync = async () => {
       try {
         console.log('[App] Checking AsyncStorage...');
         const token = await AsyncStorage.getItem('userToken');
+        const role = await AsyncStorage.getItem('userRole');
         console.log('[App] Token:', token);
         setUserToken(token);
+        setUserRole(role);
         // Simulate loading time
         setTimeout(() => setIsLoading(false), 500);
       } catch (e) {
@@ -109,14 +139,18 @@ export default function App(): React.JSX.Element {
     return <LoadingScreen />;
   }
 
-  const initial = userToken ? 'Main' : 'Auth';
+  let initialRoute = 'Auth';
+if (userToken) {
+  initialRoute = userRole === 'admin' ? 'Admin' : 'Main';
+}
 
-  return (
-    <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initial}>
-        <RootStack.Screen name="Auth" component={AuthStack} />
-        <RootStack.Screen name="Main" component={MainStack} />
-      </RootStack.Navigator>
-    </NavigationContainer>
-  );
+return (
+  <NavigationContainer>
+    <RootStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+      <RootStack.Screen name="Auth" component={AuthStack} />
+      <RootStack.Screen name="Main" component={MainStack} />
+      <RootStack.Screen name="Admin" component={AdminStack} /> 
+    </RootStack.Navigator>
+  </NavigationContainer>
+);
 }

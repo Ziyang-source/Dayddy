@@ -57,11 +57,15 @@ const LoginScreen = ({ navigation }) => {
       Alert.alert('Success', `Welcome back to Dayddy! ${data.user?.username || 'User'}! ✨`);
       const parent = navigation.getParent && navigation.getParent();
       if (data.user?.role === 'admin') {
-        if (parent && parent.replace) parent.replace('Main');
-        else navigation.replace('AdminDashboard');
+       navigation.reset({
+          index: 0,
+          routes: [{ name: 'Admin' }],
+        });
       } else {
-        if (parent && parent.replace) parent.replace('Main');
-        else navigation.replace('Main');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
       }
     } catch (error) {
       console.log('[Login] error:', error);

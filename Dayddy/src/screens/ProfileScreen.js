@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { syncProfileToCloud } from '../services/apiService';
+import { syncProfileToCloud, getUserStats } from '../services/apiService';
 import {
   Alert,
   ScrollView,
@@ -28,26 +28,55 @@ export default function ProfileScreen({ navigation }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [stats, setStats] = useState({ totalTasks: 0, totalEvents: 0 });
 
   const loadProfile = useCallback(async () => {
     try {
       const role = await AsyncStorage.getItem('userRole');
       setIsGuest(role === 'guest');
 
-      const savedProfile = await AsyncStorage.getItem('@dayddy_profile');
-      const tempUsername = await AsyncStorage.getItem('username');
-      const tempEmail = await AsyncStorage.getItem('userEmail');
+      const currentLoginUsername = await AsyncStorage.getItem('username');
+      const currentLoginEmail = await AsyncStorage.getItem('userEmail');
 
-      if (savedProfile) {
-        setProfile(JSON.parse(savedProfile));
+      const savedProfileStr = await AsyncStorage.getItem('@dayddy_profile');
+      
+      if (savedProfileStr) {
+        const parsedProfile = JSON.parse(savedProfileStr);
+        if (parsedProfile.email !== currentLoginEmail) {
+          setProfile({
+            name: currentLoginUsername || '',
+            email: currentLoginEmail || '',
+            phone: '',
+            bio: '',
+          });
+          await AsyncStorage.removeItem('@dayddy_profile');
+        } else {
+          setProfile(parsedProfile);
+        }
       } else {
         setProfile(prev => ({
           ...prev,
-          name: tempUsername || '',
-          email: tempEmail || ''
+          name: currentLoginUsername || '',
+          email: currentLoginEmail || '',
         }));
       }
+
+      if (currentLoginEmail && role !== 'guest') {
+        try {
+          const data = await getUserStats(currentLoginEmail);
+          console.log("Frontend received stats:", data);
+          if (data) {
+            setStats({
+              totalTasks: data.totalTasks || 0,
+              totalEvents: data.totalEvents || 0
+            });
+          }
+        } catch (err) {
+          console.log("Stats fetch failed:", err);
+        }
+      }
     } catch (error) {
+      console.error('Load Profile Error:', error);
       Alert.alert('Error', 'Could not load profile data.');
     } finally {
       setIsLoading(false);
@@ -56,7 +85,7 @@ export default function ProfileScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
+      setIsLoading(true); 
       loadProfile();
     }, [loadProfile])
   );
@@ -113,13 +142,16 @@ export default function ProfileScreen({ navigation }) {
 
     setIsSyncing(true);
     try {
-      await syncProfileToCloud(profile);
-      Alert.alert('Success', 'Profile synced to cloud API.');
+      const result = await syncProfileToCloud(profile);
+
+      if (result.success) {
+        await AsyncStorage.setItem('userEmail', profile.email);
+        await AsyncStorage.setItem('username', profile.name);
+
+        Alert.alert('Success', 'Profile synced to cloud and local storage updated!');
+      }
     } catch (error) {
-      Alert.alert(
-        'Sync Failed',
-        'Could not reach cloud API. Your local profile is still saved.',
-      );
+      Alert.alert('Sync Failed', error.message || 'Check server connection');
     } finally {
       setIsSyncing(false);
     }
@@ -135,22 +167,22 @@ export default function ProfileScreen({ navigation }) {
           text: "Log Out",
           style: "destructive",
           onPress: async () => {
-              try {
-                await AsyncStorage.multiRemove([
-                  'userToken', 
-                  'userRole', 
-                  'username', 
-                  'userEmail', 
-                  'userId'
-                ]);
-                console.log('[Logout] AsyncStorage cleared, navigating to Auth');
-                const parent = navigation.getParent && navigation.getParent();
-                if (parent && parent.reset) {
-                  parent.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Login' } }] });
-                } else {
-                  navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
-                }
-              } catch (error) {
+            try {
+              await AsyncStorage.multiRemove([
+                'userToken',
+                'userRole',
+                'username',
+                'userEmail',
+                'userId'
+              ]);
+              console.log('[Logout] AsyncStorage cleared, navigating to Auth');
+              const parent = navigation.getParent && navigation.getParent();
+              if (parent && parent.reset) {
+                parent.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Login' } }] });
+              } else {
+                navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+              }
+            } catch (error) {
               Alert.alert('Error', 'Failed to log out.');
               console.error('Logout error:', error);
             }
@@ -161,23 +193,23 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView 
-      style={styles.screen} 
+    <SafeAreaView
+      style={styles.screen}
       edges={['top', 'left', 'right']}
     >
-      <Header 
-        appTitle="Dayddy" 
+      <Header
+        appTitle="Dayddy"
       />
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileCard}>
           <View style={styles.avatarBlock}>
             <Text style={styles.avatarEmoji}>🐼</Text>
           </View>
-          
+
           {!isGuest && (
             <TouchableOpacity style={styles.editChip}>
               <Text style={styles.editChipText}>✎</Text>
@@ -188,8 +220,8 @@ export default function ProfileScreen({ navigation }) {
             {isGuest ? 'Guest User' : (profile.name.trim() || 'CozyPanda')}
           </Text>
           <Text style={styles.taglineText}>
-            {isGuest 
-              ? 'Log in to save your tiny wins!' 
+            {isGuest
+              ? 'Log in to save your tiny wins!'
               : (profile.bio.trim() || 'Some days are better with tiny wins')}
           </Text>
         </View>
@@ -198,17 +230,17 @@ export default function ProfileScreen({ navigation }) {
           <View style={[styles.statCard, styles.statWarm]}>
             <Text style={styles.statIcon}>⭐</Text>
             <Text style={styles.statValue}>
-              {isGuest ? '0' : '12'}
+              {isGuest ? '0' : stats.totalTasks}
             </Text>
-            <Text style={styles.statLabel}>Tasks done</Text>
+            <Text style={styles.statLabel}>Total Tasks</Text>
           </View>
-          
+
           <View style={[styles.statCard, styles.statCool]}>
             <Text style={styles.statIcon}>💜</Text>
             <Text style={styles.statValue}>
-              {isGuest ? '0' : '48'}
+              {isGuest ? '0' : stats.totalEvents}
             </Text>
-            <Text style={styles.statLabel}>Day streak</Text>
+            <Text style={styles.statLabel}>Total Events</Text>
           </View>
         </View>
 
@@ -229,7 +261,7 @@ export default function ProfileScreen({ navigation }) {
                   editable={!isGuest}
                 />
               </View>
-              
+
               <View style={styles.fieldWrapper}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
@@ -245,24 +277,9 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Theme Settings</Text>
-            <View style={styles.menuCard}>
-              {['Soft Pink', 'Match My Mood', 'Lavender Field'].map(item => (
-                <TouchableOpacity 
-                  key={item} 
-                  style={styles.menuRow} 
-                  disabled={isGuest}
-                >
-                  <Text style={styles.menuDot}>◉</Text>
-                  <Text style={styles.menuText}>{item}</Text>
-                  <Text style={styles.menuArrow}>›</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
             <TouchableOpacity
               style={[
-                styles.saveButton, 
+                styles.saveButton,
                 (isSaving || isGuest) && styles.buttonDisabled
               ]}
               onPress={handleSave}
@@ -275,7 +292,7 @@ export default function ProfileScreen({ navigation }) {
 
             <TouchableOpacity
               style={[
-                styles.syncButton, 
+                styles.syncButton,
                 (isSyncing || isGuest) && styles.buttonDisabled
               ]}
               onPress={handleCloudSync}
@@ -286,8 +303,8 @@ export default function ProfileScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.logoutButton} 
+            <TouchableOpacity
+              style={styles.logoutButton}
               onPress={handleLogout}
               activeOpacity={0.7}
             >
@@ -301,9 +318,9 @@ export default function ProfileScreen({ navigation }) {
         )}
       </ScrollView>
 
-      <BottomNavBar 
-        activeRoute="Profile" 
-        navigation={navigation} 
+      <BottomNavBar
+        activeRoute="Profile"
+        navigation={navigation}
       />
     </SafeAreaView>
   );
@@ -337,8 +354,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarEmoji: { 
-    fontSize: 38 
+  avatarEmoji: {
+    fontSize: 38
   },
   editChip: {
     position: 'absolute',
@@ -351,9 +368,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editChipText: { 
-    color: '#7A5E5E', 
-    fontWeight: '700' 
+  editChipText: {
+    color: '#7A5E5E',
+    fontWeight: '700'
   },
   nameText: {
     marginTop: 10,
@@ -372,29 +389,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  statCard: { 
-    width: '48%', 
-    borderRadius: 18, 
-    padding: 12 
+  statCard: {
+    width: '48%',
+    borderRadius: 18,
+    padding: 12
   },
-  statWarm: { 
-    backgroundColor: '#F6F0BC' 
+  statWarm: {
+    backgroundColor: '#F6F0BC'
   },
-  statCool: { 
-    backgroundColor: '#E5E4F8' 
+  statCool: {
+    backgroundColor: '#E5E4F8'
   },
-  statIcon: { 
-    fontSize: 14, 
-    marginBottom: 4 
+  statIcon: {
+    fontSize: 14,
+    marginBottom: 4
   },
-  statValue: { 
-    fontSize: 20, 
-    color: '#5E4747', 
-    fontWeight: '700' 
+  statValue: {
+    fontSize: 20,
+    color: '#5E4747',
+    fontWeight: '700'
   },
-  statLabel: { 
-    color: '#8E7474', 
-    fontSize: 12 
+  statLabel: {
+    color: '#8E7474',
+    fontSize: 12
   },
   sectionTitle: {
     color: '#7A5E5E',
@@ -408,16 +425,16 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  disabledCard: { 
-    opacity: 0.6 
+  disabledCard: {
+    opacity: 0.6
   },
-  fieldWrapper: { 
-    marginBottom: 12 
+  fieldWrapper: {
+    marginBottom: 12
   },
-  label: { 
-    marginBottom: 6, 
-    color: '#7A5E5E', 
-    fontWeight: '600' 
+  label: {
+    marginBottom: 6,
+    color: '#7A5E5E',
+    fontWeight: '600'
   },
   input: {
     borderRadius: 14,
@@ -441,19 +458,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  menuDot: { 
-    color: '#7A5E5E', 
-    marginRight: 8, 
-    fontSize: 12 
+  menuDot: {
+    color: '#7A5E5E',
+    marginRight: 8,
+    fontSize: 12
   },
-  menuText: { 
-    flex: 1, 
-    color: '#694E4E', 
-    fontWeight: '600' 
+  menuText: {
+    flex: 1,
+    color: '#694E4E',
+    fontWeight: '600'
   },
-  menuArrow: { 
-    color: '#8E7474', 
-    fontSize: 18 
+  menuArrow: {
+    color: '#8E7474',
+    fontSize: 18
   },
   saveButton: {
     marginTop: 8,
@@ -469,17 +486,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  buttonDisabled: { 
-    opacity: 0.5, 
-    backgroundColor: '#BDBDBD' 
+  buttonDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#BDBDBD'
   },
-  saveButtonText: { 
-    color: '#FFFFFF', 
-    fontWeight: '700' 
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700'
   },
-  syncButtonText: { 
-    color: '#FFFFFF', 
-    fontWeight: '700' 
+  syncButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700'
   },
   logoutButton: {
     marginTop: 10,
@@ -488,13 +505,13 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: 'center',
   },
-  logoutText: { 
-    color: '#8D5D74', 
-    fontWeight: '700' 
+  logoutText: {
+    color: '#8D5D74',
+    fontWeight: '700'
   },
-  helperText: { 
-    marginTop: 10, 
-    color: '#8E7474', 
-    textAlign: 'center' 
+  helperText: {
+    marginTop: 10,
+    color: '#8E7474',
+    textAlign: 'center'
   },
 });

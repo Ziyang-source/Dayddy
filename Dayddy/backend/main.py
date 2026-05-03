@@ -1,3 +1,5 @@
+import os
+
 from pathlib import Path
 import sqlite3
 from typing import Optional
@@ -86,8 +88,7 @@ def get_db_connection() -> sqlite3.Connection:
 
 def init_db() -> None:
     with get_db_connection() as conn:
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -102,10 +103,8 @@ def init_db() -> None:
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             )
-            """
-        )
-        conn.execute(
-            """
+            """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -118,43 +117,50 @@ def init_db() -> None:
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             )
-            """
-        )
+            """)
 
-        task_columns = [row[1] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        task_columns = [
+            row[1] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()
+        ]
         if "user_id" not in task_columns:
-            conn.execute("ALTER TABLE tasks ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+            conn.execute(
+                "ALTER TABLE tasks ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0"
+            )
 
-        event_columns = [row[1] for row in conn.execute("PRAGMA table_info(events)").fetchall()]
+        event_columns = [
+            row[1] for row in conn.execute("PRAGMA table_info(events)").fetchall()
+        ]
         if "user_id" not in event_columns:
-            conn.execute("ALTER TABLE events ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
-        conn.execute(
-            """
+            conn.execute(
+                "ALTER TABLE events ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0"
+            )
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 created_at TEXT DEFAULT (datetime('now'))
             )
-            """
-        )
-        conn.execute(
-            """
+            """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS event_categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 created_at TEXT DEFAULT (datetime('now'))
             )
-            """
-        )
+            """)
 
-        task_category_count = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+        task_category_count = conn.execute(
+            "SELECT COUNT(*) FROM categories"
+        ).fetchone()[0]
         if task_category_count == 0:
             conn.executemany(
                 "INSERT INTO categories(name) VALUES (?)",
                 [(name,) for name in DEFAULT_TASK_CATEGORIES],
             )
 
-        event_category_count = conn.execute("SELECT COUNT(*) FROM event_categories").fetchone()[0]
+        event_category_count = conn.execute(
+            "SELECT COUNT(*) FROM event_categories"
+        ).fetchone()[0]
         if event_category_count == 0:
             conn.executemany(
                 "INSERT INTO event_categories(name) VALUES (?)",
@@ -216,7 +222,9 @@ def parse_completed_only(completed_only: Optional[bool]) -> Optional[int]:
 
 def validate_user_id(user_id: int) -> int:
     if user_id <= 0:
-        raise HTTPException(status_code=400, detail="user_id must be a positive integer")
+        raise HTTPException(
+            status_code=400, detail="user_id must be a positive integer"
+        )
     return user_id
 
 
@@ -281,7 +289,9 @@ def create_task(payload: TaskCreate) -> dict:
 @app.put("/api/tasks/{task_id}")
 def update_task(task_id: int, payload: TaskUpdate) -> dict:
     if payload.id != task_id:
-        raise HTTPException(status_code=400, detail="Payload id does not match route id")
+        raise HTTPException(
+            status_code=400, detail="Payload id does not match route id"
+        )
 
     uid = validate_user_id(payload.user_id)
 
@@ -325,7 +335,9 @@ def set_task_complete(task_id: int, payload: TaskCompleteUpdate, user_id: int) -
 def delete_task(task_id: int, user_id: int) -> dict:
     uid = validate_user_id(user_id)
     with get_db_connection() as conn:
-        cursor = conn.execute("DELETE FROM tasks WHERE id = ? AND user_id = ?", (task_id, uid))
+        cursor = conn.execute(
+            "DELETE FROM tasks WHERE id = ? AND user_id = ?", (task_id, uid)
+        )
         conn.commit()
         return {"id": task_id, "affected": cursor.rowcount}
 
@@ -399,7 +411,9 @@ def create_event(payload: EventCreate) -> dict:
 @app.put("/api/events/{event_id}")
 def update_event(event_id: int, payload: EventUpdate) -> dict:
     if payload.id != event_id:
-        raise HTTPException(status_code=400, detail="Payload id does not match route id")
+        raise HTTPException(
+            status_code=400, detail="Payload id does not match route id"
+        )
 
     uid = validate_user_id(payload.user_id)
 
@@ -429,7 +443,9 @@ def update_event(event_id: int, payload: EventUpdate) -> dict:
 def delete_event(event_id: int, user_id: int) -> dict:
     uid = validate_user_id(user_id)
     with get_db_connection() as conn:
-        cursor = conn.execute("DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, uid))
+        cursor = conn.execute(
+            "DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, uid)
+        )
         conn.commit()
         return {"id": event_id, "affected": cursor.rowcount}
 
@@ -437,7 +453,9 @@ def delete_event(event_id: int, user_id: int) -> dict:
 @app.get("/api/event-categories")
 def get_event_categories() -> list[dict]:
     with get_db_connection() as conn:
-        rows = conn.execute("SELECT name FROM event_categories ORDER BY name ASC").fetchall()
+        rows = conn.execute(
+            "SELECT name FROM event_categories ORDER BY name ASC"
+        ).fetchall()
         return [row_to_category(row) for row in rows]
 
 
@@ -448,6 +466,96 @@ def create_event_category(payload: CategoryCreate) -> dict:
         raise HTTPException(status_code=400, detail="Category name is required")
 
     with get_db_connection() as conn:
-        conn.execute("INSERT OR IGNORE INTO event_categories (name) VALUES (?)", (name,))
+        conn.execute(
+            "INSERT OR IGNORE INTO event_categories (name) VALUES (?)", (name,)
+        )
         conn.commit()
         return {"name": name}
+
+
+@app.get("/api/user/stats")
+def get_user_stats(email: str):
+    print(f"\n[DEBUG] Stats request received for: {email}")
+    
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    UP_ONE = os.path.dirname(BASE_DIR)
+
+    UP_TWO = os.path.dirname(UP_ONE)
+
+    PATH_TO_NODE_DB = os.path.join(UP_TWO, "dayddybackend", "dayddy_cloud.sqlite")
+    PATH_TO_PYTHON_DB = os.path.join(BASE_DIR, "dayddy_events.sqlite3")
+
+    print(f"  -> Checking Node DB at: {PATH_TO_NODE_DB}")
+    print(f"  -> File exists? {os.path.exists(PATH_TO_NODE_DB)}")
+
+    try:
+        conn_node = sqlite3.connect(PATH_TO_NODE_DB)
+        cur_node = conn_node.cursor()
+        cur_node.execute("SELECT id FROM users WHERE email = ?", (email.strip(),))
+        user_row = cur_node.fetchone()
+        conn_node.close()
+
+        if not user_row:
+            print(f"  -> User not found in Node DB: {email}")
+            return {"totalTasks": 0, "totalEvents": 0}
+
+        user_id = user_row[0]
+        print(f"  -> Found User ID: {user_id}")
+
+        conn_py = sqlite3.connect(PATH_TO_PYTHON_DB)
+        cur_py = conn_py.cursor()
+        cur_py.execute("SELECT COUNT(*) FROM tasks WHERE user_id = ?", (user_id,))
+        t_count = cur_py.fetchone()[0]
+        cur_py.execute("SELECT COUNT(*) FROM events WHERE user_id = ?", (user_id,))
+        e_count = cur_py.fetchone()[0]
+        conn_py.close()
+
+        print(f"  -> Success! Tasks: {t_count}, Events: {e_count}")
+        return {"totalTasks": t_count, "totalEvents": e_count}
+    except Exception as e:
+        print(f"  -> Error details: {str(e)}")
+        return {"totalTasks": 0, "totalEvents": 0}
+
+
+@app.get("/api/admin/stats")
+async def get_admin_stats():
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    UP_ONE = os.path.dirname(BASE_DIR)
+
+    UP_TWO = os.path.dirname(UP_ONE)
+
+    PATH_TO_NODE_DB = os.path.join(UP_TWO, "dayddybackend", "dayddy_cloud.sqlite")
+    PATH_TO_PYTHON_DB = os.path.join(BASE_DIR, "dayddy_events.sqlite3")
+
+    try:
+        # connect to node db and get user count
+        conn_c = sqlite3.connect(PATH_TO_NODE_DB)
+        cur_c = conn_c.cursor()
+        cur_c.execute("SELECT COUNT(*) FROM users")
+        user_count = cur_c.fetchone()[0]
+        conn_c.close()
+
+        # connect to python db and get event count,total tasks
+        conn_e = sqlite3.connect(PATH_TO_PYTHON_DB)
+        cur_e = conn_e.cursor()
+
+        cur_e.execute("SELECT COUNT(*) FROM events")
+        event_count = cur_e.fetchone()[0]
+
+        cur_e.execute("SELECT COUNT(*) FROM tasks")
+        tasks_total = cur_e.fetchone()[0]
+        conn_e.close()
+
+        return {
+            "stats": {
+                "users": user_count,
+                "events": event_count,
+                "tasksCompleted": tasks_total,
+            },
+            "activityData": [12, 18, 15, 25, 21, 28, 30],
+        }
+    except Exception as e:
+        print(f"Admin Stats Error: {e}")
+        return {"error": str(e), "checked_path": PATH_TO_NODE_DB}

@@ -1,7 +1,21 @@
-# Dependencies  
-node_modules/  
-**/node_modules/  
-# DB  
-*.sqlite  
-# OS  
-.DS_Store 
+# Dependencies
+node_modules/
+**/node_modules/
+
+**/__pycache__/
+*.pyc
+*.pyo
+
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+.expo/
+dist/
+web-build/
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
