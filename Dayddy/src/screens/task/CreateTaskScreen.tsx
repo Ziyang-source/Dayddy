@@ -54,6 +54,31 @@ const DEFAULT_TAGS = [
   { label: 'Sleep', icon: 'bed-outline' },
 ];
 
+const mergeUniqueTags = (defaultTags: Array<{ label: string; icon: string }>, dbTags: Array<{ label?: string; icon?: string }>) => {
+  const seen = new Set<string>();
+  const merged: Array<{ label: string; icon: string }> = [];
+
+  for (const tag of [...defaultTags, ...dbTags]) {
+    const label = String(tag?.label ?? '').trim();
+    if (!label) {
+      continue;
+    }
+
+    const normalized = label.toLowerCase();
+    if (seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    merged.push({
+      label,
+      icon: tag?.icon ?? 'tag-outline',
+    });
+  }
+
+  return merged;
+};
+
 const parseDateString = (value?: string): Date | null => {
   if (!value) return null;
   const parts = value.split('-').map(Number);
@@ -240,7 +265,7 @@ const CreateTaskScreen: React.FC<CreateTaskScreenProps> = ({ navigation, route }
     }
   };
 
-  const allTags = [...DEFAULT_TAGS, ...customTags];
+  const allTags = mergeUniqueTags(DEFAULT_TAGS, customTags);
 
   return (
     <SafeAreaView style={styles.safe}>
